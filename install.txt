@@ -1,0 +1,7 @@
+
+# ls /dev/input/js*
+# sudo apt-get install joystick
+# jstest /dev/input/js1
+
+
+# pip install pygame
