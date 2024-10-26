@@ -1,11 +1,12 @@
-from conf import Rosmaster
+from conf import Rosmaster, sleep
 
 
 class MoveMotors():
     def __init__(self, bot: Rosmaster):
         assert isinstance(bot, Rosmaster), "Please set bot as instances of Rosmaster."
 
-        self.set_global_speeds(0, 50)
+        self.OFF_MOTOR_SPEED = 0 #stop motor value
+        self.MAX_MOTOR_SPEED = 50
 
         self.bot = bot
 
@@ -18,10 +19,6 @@ class MoveMotors():
     def stop(self):
         stop = self.OFF_MOTOR_SPEED
         self.set_all_motors(stop, is_move=True) # disable movement
-
-    def set_global_speeds(self, off_motor_speed, max_motor_speed):
-        self.OFF_MOTOR_SPEED = off_motor_speed
-        self.MAX_MOTOR_SPEED = max_motor_speed
 
     def set_motor(self, motor_front0_speed, motor_back0_speed, motor_front1_speed, motor_back1_speed, is_move:bool = False):
         self.motor_front0_speed = motor_front0_speed
@@ -52,7 +49,6 @@ class MoveMotors():
         return self.motor_front0_speed, self.motor_back0_speed, self.motor_front1_speed, self.motor_back1_speed
 
 
-
     def move_forward(self, is_move:bool = False):
         move = self.MAX_MOTOR_SPEED
         self.set_all_motors(move, is_move)
@@ -81,5 +77,8 @@ class MoveMotors():
 
     def __del__(self):
         # stop motion reset
+        sleep()
         self.stop()
+        
+        print("del")
         
