@@ -1,9 +1,8 @@
-from conf import Rosmaster, pygame, sleep, clamp
+from conf import Rosmaster, sleep
 from move_motor import MoveMotors
 from move_arm import MoveArm
-
+from gamepad import Gamepad
 import time
-
 
 #TODO: set the CH3341SER first
 #TODO: check which usb device is available as Rosmater
@@ -15,7 +14,7 @@ EXTENSION_BOARD_ADDRESS = "/dev/ttyUSB1" # /dev/ttyUSB*
 
 # Check and run the extension board
 bot = Rosmaster(com=EXTENSION_BOARD_ADDRESS)
-bot.create_receive_threading()
+#bot.create_receive_threading()
 
 move_arm = MoveArm(bot)
 move_motor = MoveMotors(bot)
@@ -24,58 +23,85 @@ move_motor = MoveMotors(bot)
 from samples import samples
 samples(move_arm, move_motor)
 
-"""
-# Initialize pygame and the joystick
-pygame.init()
-pygame.joystick.init()
-
-
-# Check for available joysticks
-assert pygame.joystick.get_count() == 0, "No joystick found."
 
 
 
-joystick = pygame.joystick.Joystick(CONTROLLER_ID)
-joystick.init()
-print(f"Joystick detected: {joystick.get_name()}")
+
+gamepad = Gamepad(CONTROLLER_ID)
+
+
 
 print("Listening for joystick inputs... Press Ctrl+C to stop.")
 try:
     while True:
-        # Process events
-        pygame.event.pump()
-        
-        # Check for button and axis events
-        for event in pygame.event.get():
-            if event.type == pygame.JOYBUTTONDOWN:
-                print(f"Button {event.button} pressed")
-            elif event.type == pygame.JOYBUTTONUP:
-                print(f"Button {event.button} released")
-            elif event.type == pygame.JOYAXISMOTION:
-                print(f"Axis {event.axis} moved to {event.value}")
-        
-        # Check for D-pad (hat) movement
-        num_hats = joystick.get_numhats()  # Get number of hats (D-pads)
-        for i in range(num_hats):
-            hat_value = joystick.get_hat(i)  # Get the position of the D-pad
-            if hat_value != (0, 0):  # Only print if the D-pad is pressed in a direction
-                print(f"D-pad {i} moved to {hat_value}")
+        actions = gamepad.loop()
+        for act in actions:
+            action = act["action"]
+            mode = act["mode"]
+            value = act["value"]
 
-        time.sleep(0.1)  # Short delay to reduce CPU usage
-except KeyboardInterrupt:
+            if action is "button":
+                if value is 0: # A
+                    move_arm.arm_full_open() if mode is 1 else move_arm.arm_full_close()
+                elif value is 3: # X
+                    move_motor.gas() if mode is 1 else move_motor.stop()
+                elif value is 4: # Y
+                        move_arm.set_arm_bent(0)
+
+                print(action ," ", value, "is ",  mode)
+
+            elif action is "axis":
+                if value is 1 and mode < 0: #up
+                    a= 50 - mode * 100
+                    move_arm.set_arm_bent(a)
+                    print(a)
+                elif value is 1 and mode > 0:
+                    a= 50 + mode * 100
+                    move_arm.set_arm_bent( a )
+                    print(a)
+                else:
+                    move_arm.set_arm_bent(0)
+                    #move_arm.
+                print(action ," ", value, "is ",  mode)
+
+
+            elif action is "dpad":
+                if mode is "neutral":
+                    move_motor.stop()
+                elif mode is "up":
+                    move_motor.move_forward()
+                elif mode is "down":
+                    move_motor.move_backward()
+                elif mode is "right":
+                    move_motor.move_side0()
+                elif mode is "left":
+                    move_motor.move_side1()
+                elif mode is "up-left" or mode is "down-left": #TODO:
+                    move_motor.move_turn0()
+                elif mode is "up-right" or mode is "down-right": #TODO:
+                    move_motor.move_turn1()
+
+                else:
+
+                    print(action ," ", value, "is ",  mode)
+
+
+except KeyboardInterrupt or Exception:
     print("Stopped listening for joystick inputs.")
+
 finally:
-    pygame.joystick.quit()
-    pygame.quit()
-"""
+    #close gamepad
+    if 'gamepad' in locals():
+        gamepad.close()
+    # close the arm action
+    if 'move_arm' in locals():
+        move_arm.close()
+    # close the motor action
+    if 'move_motor' in locals():
+        move_motor.close()
 
-
-
-# close the arm action
+del gamepad
 del move_arm
-
-
-# close the motor action
 del move_motor
 
 

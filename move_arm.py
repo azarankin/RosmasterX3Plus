@@ -31,27 +31,45 @@ class MoveArm():
 
     def reset_servo(self):
         self.set_arm_servo(self.SERVO_BEGIN, self.SERVO_BEGIN, self.SERVO_BEGIN, self.SERVO_BEGIN, self.SERVO_BEGIN, self.SERVO_CLAMP_CLOSE_BEGIN)
+    
+    def value_clamp(self, value, min_servo_value=None, max_servo_value=None):
+        if not min_servo_value:
+            min_servo_value=self.MIN_SERVO_VALUE
+        if not max_servo_value:
+            max_servo_value=self.MAX_SERVO_VALUE
+        return clamp(int(value), min_servo_value, max_servo_value)
 
 
-    def set_arm_servo(self, base_rotation=None, arm_bottom=None, arm_middle=None, arm_top=None, camip_rotation=None, clamp_close=None):
-        value_clamp = lambda value, min_servo_value=self.MIN_SERVO_VALUE, max_servo_value=self.MAX_SERVO_VALUE: clamp(value, min_servo_value, max_servo_value)
-        
+    def set_base_rotation(self, base_rotation, min_value=None, max_value=None):
         if base_rotation:
-            self.base_rotation = value_clamp(base_rotation)
+            self.base_rotation = self.value_clamp(base_rotation, min_value, max_value)
+
+    def set_arm_position(self, arm_bottom, arm_middle, arm_top, min_value=None, max_value=None):
         if arm_bottom:
-            self.arm_bottom = value_clamp(arm_bottom)
+            self.arm_bottom = self.value_clamp(arm_bottom, min_value, max_value)
         if arm_middle:
-            self.arm_middle = value_clamp(arm_middle)
+                    self.arm_middle = self.value_clamp(arm_middle)
         if arm_top:
-            self.arm_top = value_clamp(arm_top)
-        if camip_rotation:
-            self.clamp_rotation = value_clamp(camip_rotation)
-        if clamp_close:
-            self.clamp_close = value_clamp(clamp_close, self.MIN_SERVO_CLAMP_OPEN_VALUE)
+            self.arm_top = self.value_clamp(arm_top, min_value, max_value)
 
         self.arm_position = self.arm_top + self.arm_middle + self.arm_bottom
 
+    def set_clamp_rotation(self, clamp_rotation, min_value=None, max_value=None):
+        if clamp_rotation:
+            self.clamp_rotation = self.value_clamp(clamp_rotation, min_value, max_value)
+
+    def set_clamp_close(self, clamp_rotation, min_value=None, max_value=None):
+        if clamp_rotation:
+            self.clamp_rotation = self.value_clamp(clamp_rotation, min_value, max_value)
+
+
+    def set_arm_servo(self, base_rotation=None, arm_bottom=None, arm_middle=None, arm_top=None, clamp_rotation=None, clamp_close=None):
+        self.set_base_rotation(base_rotation) 
+        self.set_arm_position(arm_bottom, arm_middle, arm_top)
+        self.set_clamp_rotation(clamp_rotation)
+        self.set_clamp_close(clamp_close, self.MIN_SERVO_CLAMP_OPEN_VALUE)
         angle_s = [self.base_rotation, self.arm_bottom, self.arm_middle, self.arm_top, self.clamp_rotation, self.clamp_close]
+        print(angle_s)
         self.bot.set_uart_servo_angle_array(angle_s)
 
     def get_arm_servo_total(self):
@@ -111,17 +129,17 @@ class MoveArm():
 
     def set_arm_bent(self, value):
         value_per_motor = value / self.ARM_BENT_MOTORS
-        self.arm_bottom = value_per_motor
-        self.arm_middle = value_per_motor
-        self.arm_top = value_per_motor
+        self.set_arm_position(value_per_motor, value_per_motor, value_per_motor)
         self.set_arm_servo()
+
+    #def arm_value(self, value)
+        
+
 
 
     def set_arm_bent_by(self, value):
         value_per_motor = value / self.ARM_BENT_MOTORS
-        self.arm_bottom += value_per_motor
-        self.arm_middle += value_per_motor
-        self.arm_top += value_per_motor
+        self.set_arm_position(self.arm_bottom + value_per_motor, self.arm_middle + value_per_motor, self.arm_top + value_per_motor)
         self.set_arm_servo()
 
     def arm_bent_down(self):
@@ -143,7 +161,9 @@ class MoveArm():
     def calibrate():
         pass
 
-    def __del__(self):
+    def close(self):
         sleep()
         self.reset_servo() #after init set_servo_global_limits
 
+    def __del__(self):
+        self.close()

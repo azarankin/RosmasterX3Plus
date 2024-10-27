@@ -74,11 +74,11 @@ class MoveMotors():
         speed = self.MAX_MOTOR_SPEED
         self.set_side_all_motors(speed, is_move)
 
-
-    def __del__(self):
+    def close(self):
         # stop motion reset
         sleep()
         self.stop()
         
-        print("del")
-        
+
+    def __del__(self):
+        self.close()

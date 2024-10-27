@@ -4,7 +4,13 @@ from move_motor import MoveMotors
 
 def samples(move_arm:MoveMotors, move_motor:MoveArm):
     sleep()
-    move_arm.arm_bent_by(-30)
+    move_arm.set_arm_bent(300)
+    sleep()
+    move_arm.set_arm_bent(270)
+    sleep()
+    move_arm.set_arm_bent(200)
+    sleep()
+
     move_arm.arm_step_open()
     sleep()
     move_arm.arm_step_open()
