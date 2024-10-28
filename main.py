@@ -1,16 +1,16 @@
-from conf import Rosmaster, sleep
-from move_motor import MoveMotors
-from move_arm import MoveArm
-from gamepad import Gamepad
+from conf import Rosmaster, sleep, settings
+from classes.move_motor import MoveMotors
+from classes.move_arm import MoveArm
+from classes.gamepad import Gamepad
 import time
 
 #TODO: set the CH3341SER first
 #TODO: check which usb device is available as Rosmater
 #TODO: check the option to set sleep for extreme movements
+#TODO: memoization
 
-
-CONTROLLER_ID = 0 # /dev/input/js*
-EXTENSION_BOARD_ADDRESS = "/dev/ttyUSB1" # /dev/ttyUSB*
+CONTROLLER_ID = settings["controller_id"] # ls /dev/input/js*
+EXTENSION_BOARD_ADDRESS = settings["extension_board_address"] # ls /dev/ttyUSB*
 
 # Check and run the extension board
 bot = Rosmaster(com=EXTENSION_BOARD_ADDRESS)
@@ -31,9 +31,14 @@ gamepad = Gamepad(CONTROLLER_ID)
 
 
 
+is_car_move = False
+
 print("Listening for joystick inputs... Press Ctrl+C to stop.")
 try:
     while True:
+        is_arm_move = False
+        
+
         actions = gamepad.loop()
         for act in actions:
             action = act["action"]
@@ -42,27 +47,22 @@ try:
 
             if action is "button":
                 if value is 0: # A
+                   
                     move_arm.arm_full_open() if mode is 1 else move_arm.arm_full_close()
                 elif value is 3: # X
-                    move_motor.gas() if mode is 1 else move_motor.stop()
+                    is_car_move = True if mode is 1 else False
+
+
                 elif value is 4: # Y
                         move_arm.set_arm_bent(0)
 
                 print(action ," ", value, "is ",  mode)
 
             elif action is "axis":
-                if value is 1 and mode < 0: #up
-                    a= 50 - mode * 100
-                    move_arm.set_arm_bent(a)
-                    print(a)
-                elif value is 1 and mode > 0:
-                    a= 50 + mode * 100
-                    move_arm.set_arm_bent( a )
-                    print(a)
-                else:
-                    move_arm.set_arm_bent(0)
-                    #move_arm.
-                print(action ," ", value, "is ",  mode)
+                if value is 1:
+                    move_arm.arm_bent_to(mode) #move arm basic samp;e
+                    is_arm_move = True
+                print(action ," ", value, "is ",  -mode)
 
 
             elif action is "dpad":
@@ -85,6 +85,20 @@ try:
 
                     print(action ," ", value, "is ",  mode)
 
+        if is_car_move is True:
+            move_motor.gas()
+        else:
+            move_motor.stop()
+
+
+        if is_arm_move is True:
+            move_arm.set_arm_servo()
+            sleep(0.5)
+
+
+
+
+        sleep(0.1)
 
 except KeyboardInterrupt or Exception:
     print("Stopped listening for joystick inputs.")
@@ -101,6 +115,9 @@ finally:
         move_motor.close()
 
 del gamepad
+
+
+
 del move_arm
 del move_motor
 

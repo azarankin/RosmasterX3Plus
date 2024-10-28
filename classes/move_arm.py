@@ -3,11 +3,13 @@ from conf import Rosmaster, clamp, sleep
 class MoveArm():
     def __init__(self, bot:Rosmaster):
         assert isinstance(bot, Rosmaster), "Please set bot as instances of Rosmaster."
-
+        
         self.MIN_SERVO_VALUE = 0
-        self.MIN_SERVO_CLAMP_OPEN_VALUE = 30
+        self.MIDDLE_SERVO_VALUE = 90
         self.MAX_SERVO_VALUE = 180
-        self.SERVO_BEGIN = 90
+        self.SERVO_BEGIN = self.MIDDLE_SERVO_VALUE 
+        self.MIN_SERVO_CLAMP_OPEN_VALUE = 30
+        
         self.SERVO_CLAMP_CLOSE_BEGIN = self.MAX_SERVO_VALUE 
 
         #self.arm_bent_value = 0
@@ -15,6 +17,10 @@ class MoveArm():
         self.ARM_BENT_MAX_VALUE = 100
         self.ARM_BENT_MOTORS = 3
         self.ARM_BENT_VALUE = self.MAX_SERVO_VALUE / self.ARM_BENT_MAX_VALUE
+        self.MIN_SERVO_BENT_SERVO_COMBINATION = 36 #when all 3 servos set together
+        self.MIDDLE_SERVO_BENT_SERVO_COMBINATION = self.MIDDLE_SERVO_VALUE  #90
+        self.MAX_SERVO_BENT_SERVO_COMBINATION = 103 #when all 3 servos set together
+
 
         self.SERVO_ROTATION_STEP = 15
 
@@ -25,6 +31,7 @@ class MoveArm():
         self.OPEN_VALUE_STEP = self.MAX_SERVO_VALUE / self.MAX_OPEN_VALUE
 
         self.bot = bot
+        print("arm reset")
         self.set_arm_clamp_openning(value=None, is_applied=False)
         self.reset_servo() #after set set_servo_global_limits
         
@@ -45,11 +52,16 @@ class MoveArm():
             self.base_rotation = self.value_clamp(base_rotation, min_value, max_value)
 
     def set_arm_position(self, arm_bottom, arm_middle, arm_top, min_value=None, max_value=None):
-        if arm_bottom:
+        if min_value is None:
+            min_value = self.MIN_SERVO_BENT_SERVO_COMBINATION 
+        if max_value is None:
+            max_value = self.MAX_SERVO_BENT_SERVO_COMBINATION 
+
+        if arm_bottom is not None:
             self.arm_bottom = self.value_clamp(arm_bottom, min_value, max_value)
-        if arm_middle:
-                    self.arm_middle = self.value_clamp(arm_middle)
-        if arm_top:
+        if arm_middle is not None:
+            self.arm_middle = self.value_clamp(arm_middle, min_value, max_value)
+        if arm_top is not None:
             self.arm_top = self.value_clamp(arm_top, min_value, max_value)
 
         self.arm_position = self.arm_top + self.arm_middle + self.arm_bottom
@@ -127,35 +139,63 @@ class MoveArm():
             self.arm_open_value += self.ARM_OPEN_VALUE_STEP
             self.set_arm_clamp_openning()
 
-    def set_arm_bent(self, value):
-        value_per_motor = value / self.ARM_BENT_MOTORS
-        self.set_arm_position(value_per_motor, value_per_motor, value_per_motor)
-        self.set_arm_servo()
+
+
+    # def set_arm_bent_each_motor(self, value_per_motor):
+    #     self.set_arm_position(value_per_motor, value_per_motor, value_per_motor)
+    #     self.set_arm_servo()
+
+
+
+    # def set_arm_bent_per_motor(self, value):
+    #     value_per_motor = value / self.ARM_BENT_MOTORS
+    #     self.set_arm_bent_each_motor(value_per_motor)
+
+
+    def arm_bent_to(self, float_value): # [-1...0...-1]
+        min_to_middle_distance = self.MIDDLE_SERVO_BENT_SERVO_COMBINATION - self.MIN_SERVO_BENT_SERVO_COMBINATION 
+        middle_to_max_distance = self.MAX_SERVO_BENT_SERVO_COMBINATION - self.MIDDLE_SERVO_BENT_SERVO_COMBINATION
+        #sign_fix = -1 if self.MIN_SERVO_VALUE > 0 else 1
+
+        float_value = -float_value
+
+        if(-1.0<=float_value<0.0):
+            value_per_motor =  self.MIDDLE_SERVO_BENT_SERVO_COMBINATION + min_to_middle_distance * float_value
+            print("value_per_motor", value_per_motor, float_value)
+            self.set_arm_position(value_per_motor-1, value_per_motor, value_per_motor)
+            
+        elif(0.0<=float_value<=1.0): #V (Reverse)
+            value_per_motor = self.MIDDLE_SERVO_BENT_SERVO_COMBINATION + middle_to_max_distance * float_value
+            print("value_per_motor", value_per_motor, float_value)
+            self.set_arm_position(value_per_motor+1, value_per_motor, value_per_motor)
+
+
+
 
     #def arm_value(self, value)
         
 
 
 
-    def set_arm_bent_by(self, value):
-        value_per_motor = value / self.ARM_BENT_MOTORS
-        self.set_arm_position(self.arm_bottom + value_per_motor, self.arm_middle + value_per_motor, self.arm_top + value_per_motor)
-        self.set_arm_servo()
+    # def set_arm_bent_by(self, value):
+    #     value_per_motor = value / self.ARM_BENT_MOTORS
+    #     self.set_arm_position(self.arm_bottom + value_per_motor, self.arm_middle + value_per_motor, self.arm_top + value_per_motor)
+    #     self.set_arm_servo()
 
-    def arm_bent_down(self):
-        self.set_arm_bent_by(self.ARM_BENT_VALUE)
+    # def arm_bent_down(self):
+    #     self.set_arm_bent_by(self.ARM_BENT_VALUE)
 
-    def arm_bent_up(self):
-        self.set_arm_bent_by(-self.ARM_BENT_VALUE)
+    # def arm_bent_up(self):
+    #     self.set_arm_bent_by(-self.ARM_BENT_VALUE)
 
-    def arm_bent_by(self, times):
-        self.set_arm_bent(self.arm_position + self.ARM_BENT_VALUE * times)
+    # def arm_bent_by(self, times):
+    #     self.set_arm_bent(self.arm_position + self.ARM_BENT_VALUE * times)
 
-    def arm_bent_down_by(self, times):
-        self.arm_bent_by(times)
+    # def arm_bent_down_by(self, times):
+    #     self.arm_bent_by(times)
 
-    def arm_bent_up_by(self, times):
-        self.arm_bent_by(-times)
+    # def arm_bent_up_by(self, times):
+    #     self.arm_bent_by(-times)
 
 
     def calibrate():
@@ -163,6 +203,7 @@ class MoveArm():
 
     def close(self):
         sleep()
+        print("arm reset")
         self.reset_servo() #after init set_servo_global_limits
 
     def __del__(self):
